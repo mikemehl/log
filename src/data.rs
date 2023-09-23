@@ -57,15 +57,14 @@ pub fn list_projects() -> Result<Vec<String>> {
 
 pub fn start_entry(project: String, tag: Option<String>, start: DateTime<Local>) -> Result<()> {
     let mut log_file = read_log_file()?;
-    if !log_file.projects.iter_mut().any(|e| e.name == project) {
+    if !check_project_exists(&log_file, project.as_str()) {
         return Err(anyhow::anyhow!("Project does not exist"));
     }
-    if log_file
-        .entries
-        .iter_mut()
-        .any(|e| e.project == project && e.end.is_none())
-    {
+    if check_project_started(&log_file, project.as_str()) {
         return Err(anyhow::anyhow!("Project already started"));
+    }
+    if let Some(entry) = check_any_project_started(&mut log_file) {
+        entry.end = Some(start);
     }
     let id = log_file.entries.len() as i32;
     log_file.entries.push(TimeEntry {
@@ -76,6 +75,16 @@ pub fn start_entry(project: String, tag: Option<String>, start: DateTime<Local>)
         end: None,
     });
     write_log_file(&log_file)
+}
+
+pub fn stop_entry() -> Result<()> {
+    let mut log_file = read_log_file()?;
+    if let Some(entry) = check_any_project_started(&mut log_file) {
+        entry.end = Some(Local::now());
+        write_log_file(&log_file)
+    } else {
+        Err(anyhow::anyhow!("No project started"))
+    }
 }
 
 fn read_log_file() -> Result<LogFile> {
@@ -104,4 +113,20 @@ fn create_log_file() -> Result<std::fs::File> {
 fn write_log_file(log_file: &LogFile) -> Result<()> {
     let log_file = serde_yaml::to_string(log_file)?;
     Ok(std::fs::write(LOG_FILE, log_file)?)
+}
+
+fn check_project_started(log_file: &LogFile, project: &str) -> bool {
+    !log_file.entries.is_empty()
+        && log_file
+            .entries
+            .iter()
+            .any(|e| e.project == project && e.end.is_none())
+}
+
+fn check_project_exists(log_file: &LogFile, project: &str) -> bool {
+    log_file.projects.iter().any(|e| e.name == project)
+}
+
+fn check_any_project_started(log_file: &mut LogFile) -> Option<&mut TimeEntry> {
+    log_file.entries.iter_mut().find(|e| e.end.is_none())
 }

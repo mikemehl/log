@@ -12,6 +12,7 @@ fn main() {
         Command::Project { cmd } => do_project_cmd(cmd),
         Command::List { what } => do_list_cmd(what),
         Command::Start { project, tag } => do_start_cmd(project, tag),
+        Command::Stop {} => do_stop_cmd(),
         _ => unimplemented!(),
     } {
         println!("Error: {}", err);
@@ -37,7 +38,9 @@ fn do_list_cmd(what: ListCommand) -> Result<()> {
             }
             Ok(())
         }
-        _ => unimplemented!(),
+        ListCommand::Entries { period: _ } => {
+            todo!()
+        }
     }
 }
 
@@ -55,4 +58,8 @@ fn do_start_cmd(project: String, tag: Option<String>) -> Result<()> {
             println!("Started {} at {} ", project, time.format("%H:%M"))
         }
     })
+}
+
+fn do_stop_cmd() -> Result<()> {
+    data::stop_entry().map(|_| println!("Stopped"))
 }

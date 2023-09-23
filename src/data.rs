@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs::OpenOptions, io::Read};
 
@@ -14,8 +15,8 @@ pub struct TimeEntry {
     pub id: i32,
     pub project: String,
     pub tag: Option<String>,
-    // pub start: DateTime<Local>,
-    // pub end: Option<DateTime<Local>>,
+    pub start: DateTime<Local>,
+    pub end: Option<DateTime<Local>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -52,6 +53,29 @@ pub fn list_projects() -> Result<Vec<String>> {
         .iter()
         .map(|e| e.name.clone())
         .collect::<Vec<String>>())
+}
+
+pub fn start_entry(project: String, tag: Option<String>, start: DateTime<Local>) -> Result<()> {
+    let mut log_file = read_log_file()?;
+    if !log_file.projects.iter_mut().any(|e| e.name == project) {
+        return Err(anyhow::anyhow!("Project does not exist"));
+    }
+    if log_file
+        .entries
+        .iter_mut()
+        .any(|e| e.project == project && e.end.is_none())
+    {
+        return Err(anyhow::anyhow!("Project already started"));
+    }
+    let id = log_file.entries.len() as i32;
+    log_file.entries.push(TimeEntry {
+        id,
+        project,
+        tag,
+        start,
+        end: None,
+    });
+    write_log_file(&log_file)
 }
 
 fn read_log_file() -> Result<LogFile> {

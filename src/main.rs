@@ -2,6 +2,7 @@ pub(crate) mod cli;
 mod data;
 use crate::cli::{Cli, Command, ProjectCommand};
 use anyhow::Result;
+use chrono::prelude::*;
 use clap::Parser;
 use cli::ListCommand;
 
@@ -10,6 +11,7 @@ fn main() {
     if let Err(err) = match args.cmd {
         Command::Project { cmd } => do_project_cmd(cmd),
         Command::List { what } => do_list_cmd(what),
+        Command::Start { project, tag } => do_start_cmd(project, tag),
         _ => unimplemented!(),
     } {
         println!("Error: {}", err);
@@ -37,4 +39,20 @@ fn do_list_cmd(what: ListCommand) -> Result<()> {
         }
         _ => unimplemented!(),
     }
+}
+
+fn do_start_cmd(project: String, tag: Option<String>) -> Result<()> {
+    let time = Local::now();
+    data::start_entry(project.clone(), tag.clone(), time).map(|_| {
+        if let Some(tag) = tag {
+            println!(
+                "Started {} with tag {} at {} ",
+                project,
+                tag,
+                time.format("%H:%M")
+            )
+        } else {
+            println!("Started {} at {} ", project, time.format("%H:%M"))
+        }
+    })
 }

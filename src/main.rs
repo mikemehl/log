@@ -13,7 +13,13 @@ fn main() {
         Command::List { what } => do_list_cmd(what),
         Command::Start { project, tag } => do_start_cmd(project, tag),
         Command::Stop {} => do_stop_cmd(),
-        _ => unimplemented!(),
+        Command::Update { id, start, end } => do_update_cmd(id, start, end),
+        Command::Report {
+            period,
+            project,
+            tag,
+        } => do_report_cmd(period, project, tag),
+        Command::Delete { id } => do_delete_cmd(id),
     } {
         println!("Error: {}", err);
     }
@@ -83,4 +89,17 @@ fn do_start_cmd(project: String, tag: Option<String>) -> Result<()> {
 
 fn do_stop_cmd() -> Result<()> {
     data::stop_entry().map(|_| println!("Stopped"))
+}
+
+fn do_update_cmd(id: i32, start: String, end: String) -> Result<()> {
+    data::update_entry(id, start, end).map(|_| println!("Updated"))
+}
+
+fn do_report_cmd(period: cli::Period, project: String, tag: Option<String>) -> Result<()> {
+    let _entries = data::fetch_entries(period, project, tag);
+    todo!()
+}
+
+fn do_delete_cmd(id: i32) -> Result<()> {
+    data::delete_entry(id)
 }

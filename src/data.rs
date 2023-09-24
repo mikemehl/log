@@ -3,14 +3,17 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs::OpenOptions, io::Read};
 
+use crate::cli::Period;
+
 const LOG_FILE: &str = ".timelog.yaml";
+const DATE_IN_FORMAT: &str = "%Y-%m-%d %H:%M";
 
 #[derive(Serialize, Deserialize)]
 pub struct ProjectDef {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TimeEntry {
     pub id: i32,
     pub project: String,
@@ -21,8 +24,8 @@ pub struct TimeEntry {
 
 #[derive(Serialize, Deserialize)]
 pub struct LogFile {
-    projects: Vec<ProjectDef>,
-    entries: Vec<TimeEntry>,
+    pub projects: Vec<ProjectDef>,
+    pub entries: Vec<TimeEntry>,
 }
 
 pub fn create_project(name: String) -> Result<()> {
@@ -90,6 +93,57 @@ pub fn stop_entry() -> Result<()> {
     } else {
         Err(anyhow::anyhow!("No project started"))
     }
+}
+
+pub fn update_entry(id: i32, start: String, end: String) -> Result<()> {
+    let start = DateTime::<FixedOffset>::parse_from_str(&start, DATE_IN_FORMAT)?;
+    let end = DateTime::<FixedOffset>::parse_from_str(&end, DATE_IN_FORMAT)?;
+    let mut log_file = read_log_file()?;
+    if let Some(entry) = log_file.entries.iter_mut().find(|e| e.id == id) {
+        entry.start = start.into();
+        entry.end = Some(end.into());
+        write_log_file(&log_file)
+    } else {
+        Err(anyhow::anyhow!("No entry with that id"))
+    }
+}
+
+pub fn delete_entry(id: i32) -> Result<()> {
+    let mut log_file = read_log_file()?;
+    if log_file.entries.iter_mut().any(|e| e.id == id) {
+        log_file.entries.retain(|e| e.id != id);
+        write_log_file(&log_file)
+    } else {
+        Err(anyhow::anyhow!("No entry with that id"))
+    }
+}
+
+pub fn fetch_entries(
+    period: Period,
+    project: String,
+    tag: Option<String>,
+) -> Result<Vec<TimeEntry>> {
+    let all_entries = list_entries()?;
+    Ok(all_entries
+        .iter()
+        .filter(|e| {
+            let in_period = match period {
+                Period::Day => e.start.date_naive() == Local::now().date_naive(),
+                Period::Week => e.start.iso_week() == Local::now().iso_week(),
+                Period::Month => e.start.month() == Local::now().month(),
+                Period::Year => e.start.year() == Local::now().year(),
+                Period::All => true,
+            };
+            let in_project = e.project == project;
+            if let Some(tag) = &tag {
+                let in_tag = e.tag == Some(tag.clone());
+                in_period && in_project && in_tag
+            } else {
+                in_period && in_project
+            }
+        })
+        .cloned()
+        .collect::<Vec<TimeEntry>>())
 }
 
 fn read_log_file() -> Result<LogFile> {

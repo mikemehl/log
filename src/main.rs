@@ -38,8 +38,29 @@ fn do_list_cmd(what: ListCommand) -> Result<()> {
             }
             Ok(())
         }
-        ListCommand::Entries { period: _ } => {
-            todo!()
+        ListCommand::Entries { period } => {
+            let all_entries = data::list_entries()?;
+            let entries = all_entries.iter().filter(|e| match period {
+                cli::Period::Day => e.start.date_naive() == Local::now().date_naive(),
+                cli::Period::Week => e.start.iso_week() == Local::now().iso_week(),
+                cli::Period::Month => e.start.month() == Local::now().month(),
+                cli::Period::Year => e.start.year() == Local::now().year(),
+                cli::Period::All => true,
+            });
+            for entry in entries {
+                println!(
+                    "Project: {}, Tag: {}, Start: {}, End: {}",
+                    entry.project,
+                    if let Some(tag) = &entry.tag { tag } else { "" },
+                    entry.start.format("%H:%M"),
+                    if let Some(end) = entry.end {
+                        end.format("%H:%M").to_string()
+                    } else {
+                        "ongoing".to_string()
+                    }
+                );
+            }
+            Ok(())
         }
     }
 }

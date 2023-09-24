@@ -55,6 +55,11 @@ pub fn list_projects() -> Result<Vec<String>> {
         .collect::<Vec<String>>())
 }
 
+pub fn list_entries() -> Result<Vec<TimeEntry>> {
+    let log_file = read_log_file()?;
+    Ok(log_file.entries)
+}
+
 pub fn start_entry(project: String, tag: Option<String>, start: DateTime<Local>) -> Result<()> {
     let mut log_file = read_log_file()?;
     if !check_project_exists(&log_file, project.as_str()) {

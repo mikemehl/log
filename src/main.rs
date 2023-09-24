@@ -96,8 +96,22 @@ fn do_update_cmd(id: i32, start: String, end: String) -> Result<()> {
 }
 
 fn do_report_cmd(period: cli::Period, project: String, tag: Option<String>) -> Result<()> {
-    let _entries = data::fetch_entries(period, project, tag);
-    todo!()
+    let mut entries = data::fetch_entries(period, project.clone(), tag)?;
+    entries.sort_by(|a, b| a.start.cmp(&b.start));
+    println!("Report for {}:", project);
+    for entry in entries {
+        println!(
+            "{} | {} | {}",
+            entry.start.format("%D: %H:%M"),
+            if let Some(end) = entry.end {
+                end.format("%H:%M").to_string()
+            } else {
+                "ongoing".to_string()
+            },
+            if let Some(tag) = &entry.tag { tag } else { "" },
+        );
+    }
+    Ok(())
 }
 
 fn do_delete_cmd(id: i32) -> Result<()> {

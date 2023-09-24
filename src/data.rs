@@ -13,7 +13,7 @@ pub struct ProjectDef {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug, Ord, PartialOrd)]
 pub struct TimeEntry {
     pub id: i32,
     pub project: String,

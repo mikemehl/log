@@ -5,7 +5,7 @@ use std::{fs::OpenOptions, io::Read};
 
 use crate::cli::Period;
 
-const LOG_FILE: &str = ".timelog.yaml";
+const LOG_FILE: &str = ".config/timelog.yaml";
 const DATE_IN_FORMAT: &str = "%Y-%m-%d %H:%M";
 
 #[derive(Serialize, Deserialize)]
@@ -148,7 +148,8 @@ pub fn fetch_entries(
 
 fn read_log_file() -> Result<LogFile> {
     let mut log_string = String::new();
-    if let Ok(log_file) = OpenOptions::new().read(true).open(LOG_FILE) {
+    let log_file = get_log_file_name()?;
+    if let Ok(log_file) = OpenOptions::new().read(true).open(log_file) {
         let mut log_file = std::io::BufReader::new(log_file);
         log_file.read_to_string(&mut log_string)?;
     } else {
@@ -165,13 +166,15 @@ fn create_log_file() -> Result<std::fs::File> {
         entries: Vec::new(),
     };
     let starter = serde_yaml::to_string(&log_file)?;
-    std::fs::write(LOG_FILE, starter)?;
-    Ok(std::fs::File::open(LOG_FILE)?)
+    let log_file_name = get_log_file_name()?;
+    std::fs::write(log_file_name.clone(), starter)?;
+    Ok(std::fs::File::open(log_file_name)?)
 }
 
 fn write_log_file(log_file: &LogFile) -> Result<()> {
+    let log_file_name = get_log_file_name()?;
     let log_file = serde_yaml::to_string(log_file)?;
-    Ok(std::fs::write(LOG_FILE, log_file)?)
+    Ok(std::fs::write(log_file_name, log_file)?)
 }
 
 fn check_project_started(log_file: &LogFile, project: &str) -> bool {
@@ -188,4 +191,10 @@ fn check_project_exists(log_file: &LogFile, project: &str) -> bool {
 
 fn check_any_project_started(log_file: &mut LogFile) -> Option<&mut TimeEntry> {
     log_file.entries.iter_mut().find(|e| e.end.is_none())
+}
+
+fn get_log_file_name() -> Result<String> {
+    home::home_dir()
+        .map(|p| p.join(LOG_FILE).to_str().unwrap().to_string())
+        .ok_or(anyhow::anyhow!("Could not find home directory"))
 }

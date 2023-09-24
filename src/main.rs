@@ -1,5 +1,7 @@
 pub(crate) mod cli;
 mod data;
+use std::ops::Add;
+
 use crate::cli::{Cli, Command, ProjectCommand};
 use anyhow::Result;
 use chrono::prelude::*;
@@ -96,12 +98,17 @@ fn do_update_cmd(id: i32, start: String, end: String) -> Result<()> {
 }
 
 fn do_report_cmd(period: cli::Period, project: String, tag: Option<String>) -> Result<()> {
+    let mut total = chrono::Duration::zero();
     let mut entries = data::fetch_entries(period, project.clone(), tag)?;
     entries.sort_by(|a, b| a.start.cmp(&b.start));
     println!("Report for {}:", project);
     for entry in entries {
+        let duration = entry
+            .end
+            .unwrap_or(Local::now())
+            .signed_duration_since(entry.start);
         println!(
-            "{} | {} | {}",
+            "{} | {} | {} | {}M",
             entry.start.format("%D: %H:%M"),
             if let Some(end) = entry.end {
                 end.format("%H:%M").to_string()
@@ -109,8 +116,11 @@ fn do_report_cmd(period: cli::Period, project: String, tag: Option<String>) -> R
                 "ongoing".to_string()
             },
             if let Some(tag) = &entry.tag { tag } else { "" },
+            duration.num_minutes()
         );
+        total = total.add(duration);
     }
+    println!("Total: {}", total);
     Ok(())
 }
 
